@@ -1,5 +1,4 @@
 name: Review Issues with StackSpot AI
-
 on:
   issues:
     types: [opened, edited]
@@ -8,29 +7,16 @@ jobs:
   review-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install STK CLI
-        run: |
-          pip install stackspot-cli
-
-      - name: Login to StackSpot
-        env:
-          STACKSPOT_PAT: ${{ secrets.STACKSPOT_PAT }}
-        run: |
-          stk login --token $STACKSPOT_PAT
-
       - name: Call StackSpot AI Quick Command to review issue
         env:
+          STACKSPOT_TOKEN: ${{ secrets.STACKSPOT_TOKEN }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          stk quick-command run review-issue \
-            --input "title=$ISSUE_TITLE" \
-            --input "body=$ISSUE_BODY"
+          curl -X POST "https://api.stackspot.com/quick-command/review-issue" \
+            -H "Authorization: Bearer $STACKSPOT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+                  "title": "'"$ISSUE_TITLE"'",
+                  "body": "'"$ISSUE_BODY"'"
+                }'
