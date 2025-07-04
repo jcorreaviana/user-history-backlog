@@ -2,76 +2,57 @@ name: Copiar issues com iteration específica para repositório público
 
 on:
   schedule:
-    - cron: '*/1 * * * *'  # Executa a cada 10 minutos
+    - cron: '*/10 * * * *'  # Executa a cada 10 minutos
   workflow_dispatch:       # Permite execução manual também
 
 jobs:
   sync-iteration:
     runs-on: ubuntu-latest
+
     steps:
       - name: Instalar GitHub CLI
         run: |
-          sudo apt-get install -y gh
+          sudo apt-get update
+          sudo apt-get install -y gh jq
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: Listar projetos da organização
+      - name: Buscar ID do projeto no repositório pessoal
+        id: projeto
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Buscando projetos v2 da organização $ORG..."
+          echo "Buscando ID do projeto no repositório jcorreaviana/user-history-backlog..."
 
-          gh api graphql -f query='
+          PROJECT_ID=$(gh api graphql -f query='
           {
             repository(owner: "jcorreaviana", name: "user-history-backlog") {
-              projectsV2(first: 100) {
-                nodes {
-                  title
-                  number
-                  id
-                  shortDescription
-                }
+              projectV2(number: 2) {
+                id
               }
             }
-          }' --jq '.organization.projectsV2.nodes' 2>/dev/null || echo "null")
+          }' --jq '.repository.projectV2.id')
 
-          if [ "$OUTPUT" == "null" ]; then
-            echo "⚠️ Nenhum projeto encontrado ou erro de permissão. Verifique o login e o token."
-            exit 0
-          fi
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
 
-          echo "$OUTPUT" | jq -r '.[] | "\(.number): \(.title)"'
-      - name: Buscar issues na iteration "Iteration 1"
+      - name: Buscar issues da iteration "Iteration 1"
         id: buscar
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Buscando issues com iteration Iteration 1..."
-
-          # Substitua `PROJECT_NUMBER`, `ORG`, `REPO_PRIVADO` corretamente
-          PROJECT_ID=$(gh api graphql -f query='
-            {
-              repository(owner: "jcorreaviana", name: "user-history-backlog") {
-                projectV2(number: 2) {
-                  id
-                }
-              }
-            }' --jq '.organization.projectV2.id')
+          echo "Buscando issues com Iteration == 'Iteration 1'..."
 
           ISSUE_LIST=$(gh api graphql -f query='
-          query {
+          {
             repository(owner: "jcorreaviana", name: "user-history-backlog") {
               projectV2(number: 2) {
-                items(first: 50) {
+                items(first: 100) {
                   nodes {
                     content {
                       ... on Issue {
                         title
                         body
                         number
-                        repository {
-                          name
-                        }
                       }
                     }
                     fieldValues(first: 10) {
@@ -85,7 +66,7 @@ jobs:
                 }
               }
             }
-          }' --jq '.organization.projectV2.items.nodes[] | select(.fieldValues.nodes[].title=="Iteration 1") | .content')
+          }' --jq '.repository.projectV2.items.nodes[] | select(.fieldValues.nodes[].title == "Iteration 1") | .content')
 
           echo "$ISSUE_LIST" > issues.json
 
@@ -93,16 +74,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
+          if [ ! -s issues.json ]; then
+            echo "⚠️ Nenhuma issue com Iteration 1 encontrada."
+            exit 0
+          fi
+
           cat issues.json | jq -c '.' | while read -r issue; do
             TITLE=$(echo "$issue" | jq -r '.title')
             BODY=$(echo "$issue" | jq -r '.body')
 
-            echo "Criando issue: $TITLE"
+            echo "Criando issue pública: $TITLE"
 
-            curl -X POST \
+            curl -s -X POST \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/jcorreaviana/challenge-elastic/issue \
+              https://api.github.com/repos/jcorreaviana/challenge-elastic/issues \
               -d "{
                 \"title\": \"$TITLE\",
                 \"body\": \"$BODY\"
