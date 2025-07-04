@@ -2,7 +2,7 @@ name: Copiar issues com iteration específica para repositório público
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Executa a cada 10 minutos
+    - cron: '*/1 * * * *'  # Executa a cada 10 minutos
   workflow_dispatch:       # Permite execução manual também
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Buscando issues com iteration Sprint 12..."
+          echo "Buscando issues com iteration Iteration 1..."
 
           # Substitua `PROJECT_NUMBER`, `ORG`, `REPO_PRIVADO` corretamente
           PROJECT_ID=$(gh api graphql -f query='
@@ -59,7 +59,7 @@ jobs:
                 }
               }
             }
-          }' --jq '.organization.projectV2.items.nodes[] | select(.fieldValues.nodes[].title=="Sprint 12") | .content')
+          }' --jq '.organization.projectV2.items.nodes[] | select(.fieldValues.nodes[].title=="Iteration 1") | .content')
 
           echo "$ISSUE_LIST" > issues.json
 
