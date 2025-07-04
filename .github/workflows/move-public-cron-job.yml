@@ -25,7 +25,7 @@ jobs:
           # Substitua `PROJECT_NUMBER`, `ORG`, `REPO_PRIVADO` corretamente
           PROJECT_ID=$(gh api graphql -f query='
             {
-              organization(login: "jcorreaviana") {
+              repository(owner: "jcorreaviana", name: "user-history-backlog") {
                 projectV2(number: 2) {
                   id
                 }
@@ -34,7 +34,7 @@ jobs:
 
           ISSUE_LIST=$(gh api graphql -f query='
           query {
-            organization(login: "jcorreaviana") {
+            repository(owner: "jcorreaviana", name: "user-history-backlog") {
               projectV2(number: 1) {
                 items(first: 50) {
                   nodes {
