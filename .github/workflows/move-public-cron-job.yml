@@ -25,7 +25,7 @@ jobs:
           # Substitua `PROJECT_NUMBER`, `ORG`, `REPO_PRIVADO` corretamente
           PROJECT_ID=$(gh api graphql -f query='
             {
-              organization(login: "ORG") {
+              organization(login: "jcorreaviana") {
                 projectV2(number: 2) {
                   id
                 }
