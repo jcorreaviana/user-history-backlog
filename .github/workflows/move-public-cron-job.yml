@@ -17,15 +17,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      - name: 🔍 Listar Projects v2 do repositório
+      - name: 🔍 Listar Projects V2 do usuário pessoal
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Listando todos os Projects v2 do repositório jcorreaviana/user-history-backlog..."
+          echo "Listando projetos v2 pessoais do usuário..."
 
           gh api graphql -f query='
           {
-            repository(owner: "jcorreaviana", name: "user-history-backlog") {
+            viewer {
               projectsV2(first: 10) {
                 nodes {
                   title
@@ -34,7 +34,7 @@ jobs:
                 }
               }
             }
-          }' --jq '.repository.projectsV2.nodes[] | "\(.number): \(.title) (ID: \(.id))"'
+          }' --jq '.viewer.projectsV2.nodes[] | "\(.number): \(.title) (ID: \(.id))"'
 
       - name: Buscar ID do projeto no repositório pessoal
         id: projeto
