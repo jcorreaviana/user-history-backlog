@@ -33,8 +33,14 @@ jobs:
                 }
               }
             }
-          }' --jq '.organization.projectsV2.nodes[] | "\(.number): \(.title) - \(.shortDescription)"'
+          }' --jq '.organization.projectsV2.nodes' 2>/dev/null || echo "null")
 
+          if [ "$OUTPUT" == "null" ]; then
+            echo "⚠️ Nenhum projeto encontrado ou erro de permissão. Verifique o login e o token."
+            exit 0
+          fi
+
+          echo "$OUTPUT" | jq -r '.[] | "\(.number): \(.title)"'
       - name: Buscar issues na iteration "Iteration 1"
         id: buscar
         env:
