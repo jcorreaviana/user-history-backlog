@@ -1,0 +1,84 @@
+name: Copiar issues com iteration específica para repositório público
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # Executa a cada 10 minutos
+  workflow_dispatch:       # Permite execução manual também
+
+jobs:
+  sync-iteration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar GitHub CLI
+        run: |
+          sudo apt-get install -y gh
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Buscar issues na iteration "Iteration 1"
+        id: buscar
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          echo "Buscando issues com iteration Sprint 12..."
+
+          # Substitua `PROJECT_NUMBER`, `ORG`, `REPO_PRIVADO` corretamente
+          PROJECT_ID=$(gh api graphql -f query='
+            {
+              organization(login: "ORG") {
+                projectV2(number: 2) {
+                  id
+                }
+              }
+            }' --jq '.organization.projectV2.id')
+
+          ISSUE_LIST=$(gh api graphql -f query='
+          query {
+            organization(login: "jcorreaviana") {
+              projectV2(number: 1) {
+                items(first: 50) {
+                  nodes {
+                    content {
+                      ... on Issue {
+                        title
+                        body
+                        number
+                        repository {
+                          name
+                        }
+                      }
+                    }
+                    fieldValues(first: 10) {
+                      nodes {
+                        ... on ProjectV2ItemFieldIterationValue {
+                          title
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }' --jq '.organization.projectV2.items.nodes[] | select(.fieldValues.nodes[].title=="Sprint 12") | .content')
+
+          echo "$ISSUE_LIST" > issues.json
+
+      - name: Criar issues no repositório público
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          cat issues.json | jq -c '.' | while read -r issue; do
+            TITLE=$(echo "$issue" | jq -r '.title')
+            BODY=$(echo "$issue" | jq -r '.body')
+
+            echo "Criando issue: $TITLE"
+
+            curl -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/jcorreaviana/challenge-elastic/issue \
+              -d "{
+                \"title\": \"$TITLE\",
+                \"body\": \"$BODY\"
+              }"
+          done
