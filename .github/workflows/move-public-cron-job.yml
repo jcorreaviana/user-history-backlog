@@ -3,7 +3,7 @@ name: Copiar issues com iteration específica para repositório público
 on:
   schedule:
     - cron: '*/10 * * * *'  # Executa a cada 10 minutos
-  workflow_dispatch:       # Permite execução manual também
+  workflow_dispatch:
 
 jobs:
   sync-iteration:
@@ -22,8 +22,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Buscando ID do projeto no repositório jcorreaviana/user-history-backlog..."
-
           PROJECT_ID=$(gh api graphql -f query='
           {
             repository(owner: "jcorreaviana", name: "user-history-backlog") {
@@ -32,17 +30,15 @@ jobs:
               }
             }
           }' --jq '.repository.projectV2.id')
-
           echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
 
       - name: Buscar issues da iteration "Iteration 1"
-        id: buscar
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          echo "Buscando issues com Iteration == 'Iteration 1'..."
+          echo "Buscando issues com Iteration == 'Iteration 1' que ainda não foram replicadas..."
 
-          ISSUE_LIST=$(gh api graphql -f query='
+          gh api graphql -f query='
           {
             repository(owner: "jcorreaviana", name: "user-history-backlog") {
               projectV2(number: 2) {
@@ -53,6 +49,11 @@ jobs:
                         title
                         body
                         number
+                        labels(first: 10) {
+                          nodes {
+                            name
+                          }
+                        }
                       }
                     }
                     fieldValues(first: 10) {
@@ -66,31 +67,44 @@ jobs:
                 }
               }
             }
-          }' --jq '.repository.projectV2.items.nodes[] | select(.fieldValues.nodes[].title == "Iteration 1") | .content')
+          }' --jq '
+          .repository.projectV2.items.nodes[]
+          | select(
+              (.fieldValues.nodes[].title == "Iteration 1")
+              and (.content.labels.nodes[].name | index("replicado-publico") | not)
+            )
+          | .content' > issues.json
 
-          echo "$ISSUE_LIST" > issues.json
-
-      - name: Criar issues no repositório público
+      - name: Criar issues no repositório público e marcar como replicadas
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
           if [ ! -s issues.json ]; then
-            echo "⚠️ Nenhuma issue com Iteration 1 encontrada."
+            echo "⚠️ Nenhuma issue nova para replicar."
             exit 0
           fi
 
           cat issues.json | jq -c '.' | while read -r issue; do
             TITLE=$(echo "$issue" | jq -r '.title')
             BODY=$(echo "$issue" | jq -r '.body')
+            NUMBER=$(echo "$issue" | jq -r '.number')
 
-            echo "Criando issue pública: $TITLE"
+            echo "📤 Criando issue pública: $TITLE"
 
-            curl -s -X POST \
+            RESPONSE=$(curl -s -X POST \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               https://api.github.com/repos/jcorreaviana/challenge-elastic/issues \
               -d "{
                 \"title\": \"$TITLE\",
                 \"body\": \"$BODY\"
-              }"
+              }")
+
+            # Marcar issue original como replicada
+            echo "🏷️ Adicionando label 'replicado-publico' à issue #$NUMBER"
+            curl -s -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/jcorreaviana/user-history-backlog/issues/$NUMBER/labels \
+              -d '["replicado-publico"]'
           done
