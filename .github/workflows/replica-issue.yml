@@ -1,0 +1,30 @@
+name: Replicar issue para repositório público
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  replicate-issue:
+    if: github.event.label.name == 'pronto-para-publicar'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar se a issue tem o label correto
+        if: contains(github.event.issue.labels.*.name, 'pronto-para-publicar')
+        run: echo "Issue tem o label correto, criando no repositório público..."
+
+      - name: Criar issue no repositório público
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          ISSUE_TITLE=$(echo "${{ github.event.issue.title }}" | jq -Rsa .)
+          ISSUE_BODY=$(echo "${{ github.event.issue.body }}" | jq -Rsa .)
+
+          curl -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/usuario/repositorio-publico/issues \
+            -d "{
+              \"title\": $ISSUE_TITLE,
+              \"body\": $ISSUE_BODY
+            }"
