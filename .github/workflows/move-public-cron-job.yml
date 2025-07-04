@@ -35,7 +35,7 @@ jobs:
           ISSUE_LIST=$(gh api graphql -f query='
           query {
             repository(owner: "jcorreaviana", name: "user-history-backlog") {
-              projectV2(number: 1) {
+              projectV2(number: 2) {
                 items(first: 50) {
                   nodes {
                     content {
