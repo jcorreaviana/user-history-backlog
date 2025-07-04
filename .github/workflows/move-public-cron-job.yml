@@ -15,6 +15,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
+      - name: Listar projetos da organização
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          echo "Buscando projetos v2 da organização $ORG..."
+
+          gh api graphql -f query='
+          {
+            repository(owner: "jcorreaviana", name: "user-history-backlog") {
+              projectsV2(first: 100) {
+                nodes {
+                  title
+                  number
+                  id
+                  shortDescription
+                }
+              }
+            }
+          }' --jq '.organization.projectsV2.nodes[] | "\(.number): \(.title) - \(.shortDescription)"'
+
       - name: Buscar issues na iteration "Iteration 1"
         id: buscar
         env:
