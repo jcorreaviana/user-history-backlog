@@ -1,8 +1,8 @@
 name: Copiar issues com iteration específica para repositório público
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'  # Executa a cada 10 minutos
+   #schedule:
+    #- cron: '*/10 * * * *'  # Executa a cada 10 minutos
   workflow_dispatch:
 
 jobs:
