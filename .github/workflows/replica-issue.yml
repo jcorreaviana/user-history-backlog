@@ -22,6 +22,8 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
+          set -x  # Ativa debug do shell
+
           # Autentica e obtém JWT
           JWT=$(curl -s "https://idm.stackspot.com/$REALM/oidc/oauth/token" \
             -H 'Content-Type: application/x-www-form-urlencoded' \
@@ -29,11 +31,19 @@ jobs:
             -d "client_id=$CLIENT_ID" \
             -d "client_secret=$CLIENT_KEY" | jq -r '.access_token')
 
+          if [ -z "$JWT" ] || [ "$JWT" == "null" ]; then
+            echo "::error::Falha ao obter JWT"
+            exit 1
+          fi
+          echo "JWT obtido: ${JWT:0:10}..."
+
           # Monta prompt para o agente
           PROMPT="Título: $ISSUE_TITLE\n\nDescrição: $ISSUE_BODY"
+          echo "Prompt enviado ao agente:"
+          echo "$PROMPT"
 
           # Chama o agente
-          AGENT_RESPONSE=$(curl -s 'https://genai-inference-app.stackspot.com/v1/agent/01K0J15ZV6D3X08834CYXXS0XF/chat' \
+          AGENT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" 'https://genai-inference-app.stackspot.com/v1/agent/01K0J15ZV6D3X08834CYXXS0XF/chat' \
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer $JWT" \
             -d "{
@@ -43,9 +53,20 @@ jobs:
               \"return_ks_in_response\": true
             }")
 
+          # Separa status HTTP e corpo
+          HTTP_STATUS=$(echo "$AGENT_RESPONSE" | grep HTTP_STATUS | cut -d':' -f2)
+          AGENT_BODY=$(echo "$AGENT_RESPONSE" | sed '/HTTP_STATUS/d')
+
+          echo "Status HTTP do agente: $HTTP_STATUS"
+          echo "Resposta bruta do agente:"
+          echo "$AGENT_BODY"
+
           # Extrai resultado (ajuste conforme o formato do retorno do agente)
-          RESULT_TITLE=$(echo "$AGENT_RESPONSE" | jq -r '.result.title // "Título não encontrado"')
-          RESULT_BODY=$(echo "$AGENT_RESPONSE" | jq -r '.result.body // .result // "Corpo não encontrado"')
+          RESULT_TITLE=$(echo "$AGENT_BODY" | jq -r '.result.title // "Título não encontrado"')
+          RESULT_BODY=$(echo "$AGENT_BODY" | jq -r '.result.body // .result // "Corpo não encontrado"')
+
+          echo "Título extraído: $RESULT_TITLE"
+          echo "Corpo extraído: $RESULT_BODY"
 
           echo "result_title<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT_TITLE" >> $GITHUB_OUTPUT
