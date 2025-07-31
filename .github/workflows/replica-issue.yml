@@ -53,17 +53,6 @@ jobs:
               \"return_ks_in_response\": true
             }")
 
-          echo "$AGENT_RESPONSE" > ai_response.json
-
-          MESSAGE=$(jq -r '.message // empty' ai_response.json)
-
-          if [ -n "$MESSAGE" ]; then
-            echo "✅ StackSpot AI respondeu com sucesso"
-            echo "$MESSAGE" > message.txt
-          else
-            echo "⚠️ Nenhuma mensagem retornada pelo StackSpot AI"
-          fi
-
           # Separa status HTTP e corpo
           HTTP_STATUS=$(echo "$AGENT_RESPONSE" | grep HTTP_STATUS | cut -d':' -f2)
           AGENT_BODY=$(echo "$AGENT_RESPONSE" | sed '/HTTP_STATUS/d')
