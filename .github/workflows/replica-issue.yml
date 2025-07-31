@@ -53,6 +53,10 @@ jobs:
               \"return_ks_in_response\": true
             }")
 
+          echo "RESPOSTA" > ai_response.json
+          
+          RESULT_TITLE=$(echo "$AGENT_BODY" | jq -r '.result.title // "Título não encontrado"')
+
           # Separa status HTTP e corpo
           HTTP_STATUS=$(echo "$AGENT_RESPONSE" | grep HTTP_STATUS | cut -d':' -f2)
           AGENT_BODY=$(echo "$AGENT_RESPONSE" | sed '/HTTP_STATUS/d')
