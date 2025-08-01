@@ -42,16 +42,17 @@ jobs:
           echo "Prompt enviado ao agente:"
           echo "$PROMPT"
 
+          # Monta JSON com jq para evitar problemas de escape
+          JSON_PAYLOAD=$(jq -n \
+            --arg prompt "$PROMPT" \
+            '{streaming: false, user_prompt: $prompt, stackspot_knowledge: false, return_ks_in_response: true}')
+
           # Chama o agente
-          AGENT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" 'https://genai-inference-app.stackspot.com/v1/agent/01K0J15ZV6D3X08834CYXXS0XF/chat' \
+          AGENT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" \
+            'https://genai-inference-app.stackspot.com/v1/agent/01K0J15ZV6D3X08834CYXXS0XF/chat' \
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer $JWT" \
-            -d "{
-              \"streaming\": false,
-              \"user_prompt\": \"$PROMPT\",
-              \"stackspot_knowledge\": false,
-              \"return_ks_in_response\": true
-            }")
+            -d "$JSON_PAYLOAD")
 
           # Separa status HTTP e corpo
           HTTP_STATUS=$(echo "$AGENT_RESPONSE" | grep HTTP_STATUS | cut -d':' -f2)
