@@ -22,32 +22,22 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          set -x
-
           # Autentica e obtém JWT
           JWT=$(curl -s "https://idm.stackspot.com/$REALM/oidc/oauth/token" \
             -H 'Content-Type: application/x-www-form-urlencoded' \
             -d 'grant_type=client_credentials' \
             -d "client_id=$CLIENT_ID" \
             -d "client_secret=$CLIENT_KEY" | jq -r '.access_token')
-
           if [ -z "$JWT" ] || [ "$JWT" == "null" ]; then
             echo "::error::Falha ao obter JWT"
             exit 1
           fi
-          echo "JWT obtido: ${JWT:0:10}..."
 
-          # Monta prompt para o agente
+          # Monta prompt e payload
           PROMPT="Título: $ISSUE_TITLE\n\nDescrição: $ISSUE_BODY"
-          echo "Prompt enviado ao agente:"
-          echo "$PROMPT"
-
-          # Monta JSON com jq para evitar problemas de escape
           JSON_PAYLOAD=$(jq -n \
             --arg prompt "$PROMPT" \
             '{streaming: false, user_prompt: $prompt, stackspot_knowledge: false, return_ks_in_response: true}')
-          echo "Payload enviado ao agente:"
-          echo "$JSON_PAYLOAD"
 
           # Chama o agente
           AGENT_RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" \
@@ -55,30 +45,15 @@ jobs:
             -H 'Content-Type: application/json' \
             -H "Authorization: Bearer $JWT" \
             -d "$JSON_PAYLOAD")
-
-          # Separa status HTTP e corpo
-          HTTP_STATUS=$(echo "$AGENT_RESPONSE" | grep HTTP_STATUS | cut -d':' -f2)
           AGENT_BODY=$(echo "$AGENT_RESPONSE" | sed '/HTTP_STATUS/d')
 
-          echo "Status HTTP do agente: $HTTP_STATUS"
-          echo "Resposta bruta do agente:"
-          echo "$AGENT_BODY"
-
-          # Extrai o campo 'message' do JSON de resposta
+          # Extrai e limpa o JSON retornado
           RAW_MESSAGE=$(echo "$AGENT_BODY" | jq -r '.message // empty')
-          echo "Mensagem extraída: $RAW_MESSAGE"
-
-          # Remove o bloco de markdown ```json ... ```
           CLEAN_JSON=$(echo "$RAW_MESSAGE" | sed -e '1s/^```json//' -e '$s/```$//' | sed '/^$/d')
-          echo "JSON limpo extraído do message:"
-          echo "$CLEAN_JSON"
 
-          # Faz o parse do JSON para extrair title e body
+          # Extrai title e body
           RESULT_TITLE=$(echo "$CLEAN_JSON" | jq -r '.title // "Título não encontrado"')
           RESULT_BODY=$(echo "$CLEAN_JSON" | jq -r '.body // "Corpo não encontrado"')
-
-          echo "Título extraído: $RESULT_TITLE"
-          echo "Corpo extraído: $RESULT_BODY"
 
           echo "result_title<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT_TITLE" >> $GITHUB_OUTPUT
@@ -94,14 +69,10 @@ jobs:
           TITLE: ${{ steps.agent.outputs.result_title }}
           BODY: ${{ steps.agent.outputs.result_body }}
         run: |
-          # Monta o JSON de forma segura com jq
           ISSUE_JSON=$(jq -n \
             --arg title "$TITLE" \
             --arg body "$BODY" \
             '{title: $title, body: $body}')
-          echo "Payload enviado para o GitHub:"
-          echo "$ISSUE_JSON"
-
           curl -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
