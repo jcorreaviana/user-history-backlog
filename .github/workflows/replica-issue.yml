@@ -64,9 +64,18 @@ jobs:
           echo "Resposta bruta do agente:"
           echo "$AGENT_BODY"
 
-          # Extrai os campos 'title' e 'body' do JSON de resposta
-          RESULT_TITLE=$(echo "$AGENT_BODY" | jq -r '.title // "Título não encontrado"')
-          RESULT_BODY=$(echo "$AGENT_BODY" | jq -r '.body // "Corpo não encontrado"')
+          # Extrai o campo 'message' do JSON de resposta
+          RAW_MESSAGE=$(echo "$AGENT_BODY" | jq -r '.message // empty')
+          echo "Mensagem extraída: $RAW_MESSAGE"
+
+          # Remove o bloco de markdown ```json ... ```
+          CLEAN_JSON=$(echo "$RAW_MESSAGE" | sed -e '1s/^```json//' -e '$s/```$//' | sed '/^$/d')
+          echo "JSON limpo extraído do message:"
+          echo "$CLEAN_JSON"
+
+          # Faz o parse do JSON para extrair title e body
+          RESULT_TITLE=$(echo "$CLEAN_JSON" | jq -r '.title // "Título não encontrado"')
+          RESULT_BODY=$(echo "$CLEAN_JSON" | jq -r '.body // "Corpo não encontrado"')
 
           echo "Título extraído: $RESULT_TITLE"
           echo "Corpo extraído: $RESULT_BODY"
