@@ -70,9 +70,17 @@ jobs:
           TITLE: ${{ steps.agent.outputs.result_title }}
           BODY: ${{ steps.agent.outputs.result_body }}
         run: |
+          # Adiciona referência à parent issue no corpo
+          PARENT_ISSUE_NUMBER=${{ github.event.issue.number }}
+          PARENT_ISSUE_URL="https://github.com/${{ github.repository }}/issues/$PARENT_ISSUE_NUMBER"
+          BODY_WITH_PARENT="$BODY
+
+---
+_Parent issue: [#$PARENT_ISSUE_NUMBER]($PARENT_ISSUE_URL)_"
+
           ISSUE_JSON=$(jq -n \
             --arg title "$TITLE" \
-            --arg body "$BODY" \
+            --arg body "$BODY_WITH_PARENT" \
             '{title: $title, body: $body}')
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
@@ -81,20 +89,3 @@ jobs:
             -d "$ISSUE_JSON")
           ISSUE_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
           echo "public_issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
-
-      - name: Relacionar issue original como parent
-        if: steps.create_public_issue.outputs.public_issue_number != ''
-        env:
-          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        run: |
-          # Número da issue original (parent)
-          PARENT_ISSUE_NUMBER=${{ github.event.issue.number }}
-          # Número da nova issue (child)
-          CHILD_ISSUE_NUMBER=${{ steps.create_public_issue.outputs.public_issue_number }}
-
-          # Cria a relação parent/child (pode ser necessário habilitar a feature de "issue relationships" no repo)
-          curl -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/jcorreaviana/challenge-elastic/issues/$CHILD_ISSUE_NUMBER/relationships/parent \
-            -d "{\"parent\":{\"repository\":\"${{ github.repository }}\",\"number\":$PARENT_ISSUE_NUMBER}}"
