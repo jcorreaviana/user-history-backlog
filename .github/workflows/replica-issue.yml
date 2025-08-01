@@ -46,7 +46,6 @@ jobs:
           JSON_PAYLOAD=$(jq -n \
             --arg prompt "$PROMPT" \
             '{streaming: false, user_prompt: $prompt, stackspot_knowledge: false, return_ks_in_response: true}')
-
           echo "Payload enviado ao agente:"
           echo "$JSON_PAYLOAD"
 
@@ -65,19 +64,18 @@ jobs:
           echo "Resposta bruta do agente:"
           echo "$AGENT_BODY"
 
-          # Extrai resultado (ajuste conforme o formato do retorno do agente)
-          RESULT_TITLE=$(echo "$AGENT_BODY" | jq -r '.result.title // "Título não encontrado"')
-          RESULT_BODY=$(echo "$AGENT_BODY" | jq -r '.result.body // .result // "Corpo não encontrado"')
+          # Extrai o campo 'message' do JSON de resposta
+          RESULT_MESSAGE=$(echo "$AGENT_BODY" | jq -r '.message // "Mensagem não encontrada"')
 
-          echo "Título extraído: $RESULT_TITLE"
-          echo "Corpo extraído: $RESULT_BODY"
+          echo "Mensagem extraída: $RESULT_MESSAGE"
 
+          # Usa o message como título e corpo (ajuste conforme sua necessidade)
           echo "result_title<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT_TITLE" >> $GITHUB_OUTPUT
+          echo "$RESULT_MESSAGE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
           echo "result_body<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT_BODY" >> $GITHUB_OUTPUT
+          echo "$RESULT_MESSAGE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Criar issue no repositório público
@@ -91,7 +89,6 @@ jobs:
             --arg title "$TITLE" \
             --arg body "$BODY" \
             '{title: $title, body: $body}')
-
           echo "Payload enviado para o GitHub:"
           echo "$ISSUE_JSON"
 
