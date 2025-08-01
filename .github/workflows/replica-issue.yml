@@ -70,13 +70,16 @@ jobs:
           TITLE: ${{ steps.agent.outputs.result_title }}
           BODY: ${{ steps.agent.outputs.result_body }}
         run: |
-          # Adiciona referência à parent issue no corpo
+          # Adiciona referência à parent issue no corpo usando heredoc para evitar problemas de aspas/quebra de linha
           PARENT_ISSUE_NUMBER=${{ github.event.issue.number }}
           PARENT_ISSUE_URL="https://github.com/${{ github.repository }}/issues/$PARENT_ISSUE_NUMBER"
-          BODY_WITH_PARENT="$BODY
+          BODY_WITH_PARENT="$(cat <<EOF
+$BODY
 
 ---
-_Parent issue: [#$PARENT_ISSUE_NUMBER]($PARENT_ISSUE_URL)_"
+_Parent issue: [#$PARENT_ISSUE_NUMBER]($PARENT_ISSUE_URL)_
+EOF
+)"
 
           ISSUE_JSON=$(jq -n \
             --arg title "$TITLE" \
