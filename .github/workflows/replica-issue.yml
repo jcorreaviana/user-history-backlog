@@ -22,7 +22,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          set -x  # Ativa debug do shell
+          set -x
 
           # Autentica e obtém JWT
           JWT=$(curl -s "https://idm.stackspot.com/$REALM/oidc/oauth/token" \
@@ -64,18 +64,19 @@ jobs:
           echo "Resposta bruta do agente:"
           echo "$AGENT_BODY"
 
-          # Extrai o campo 'message' do JSON de resposta
-          RESULT_MESSAGE=$(echo "$AGENT_BODY" | jq -r '.message // "Mensagem não encontrada"')
+          # Extrai os campos 'title' e 'body' do JSON de resposta
+          RESULT_TITLE=$(echo "$AGENT_BODY" | jq -r '.title // "Título não encontrado"')
+          RESULT_BODY=$(echo "$AGENT_BODY" | jq -r '.body // "Corpo não encontrado"')
 
-          echo "Mensagem extraída: $RESULT_MESSAGE"
+          echo "Título extraído: $RESULT_TITLE"
+          echo "Corpo extraído: $RESULT_BODY"
 
-          # Usa o message como título e corpo (ajuste conforme sua necessidade)
           echo "result_title<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT_MESSAGE" >> $GITHUB_OUTPUT
+          echo "$RESULT_TITLE" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
           echo "result_body<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT_MESSAGE" >> $GITHUB_OUTPUT
+          echo "$RESULT_BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Criar issue no repositório público
