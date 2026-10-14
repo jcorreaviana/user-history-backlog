@@ -1,0 +1,36 @@
+name: Status rollup
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só loga, não altera o board'
+        type: boolean
+        default: false
+  issues:
+    types: [closed, reopened]
+
+concurrency:
+  group: status-rollup
+  cancel-in-progress: false
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/status-rollup.mjs
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: '1'            # número do seu Project (está na URL)
+          STATUS_TODO: 'Todo'
+          STATUS_IN_PROGRESS: 'In Progress'
+          STATUS_DONE: 'Done'
+          STATUS_IGNORE: ''              # ex.: 'Canceled' (filhos nesse status são ignorados)
+          DRY_RUN: ${{ inputs.dry_run }}
