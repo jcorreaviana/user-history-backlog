@@ -30,7 +30,7 @@ jobs:
           PROJECT_OWNER: ${{ github.repository_owner }}
           PROJECT_NUMBER: '7'            # número do seu Project (está na URL)
           STATUS_TODO: 'Todo'
-          STATUS_IN_PROGRESS: 'In Progress'
+          STATUS_IN_PROGRESS: 'In progress'
           STATUS_DONE: 'Done'
           STATUS_IGNORE: ''              # ex.: 'Canceled' (filhos nesse status são ignorados)
           DRY_RUN: ${{ inputs.dry_run }}
