@@ -1,0 +1,58 @@
+name: Status rollup (org)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só loga, não altera o board'
+        type: boolean
+        default: false
+  issues:
+    types: [closed, reopened]
+
+concurrency:
+  group: status-rollup-org
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Opção A (recomendada para org): token de um GitHub App.
+      # Só roda se a variável de repositório/org APP_ID estiver definida.
+      - name: Gerar token do GitHub App
+        id: app
+        if: ${{ vars.APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Rollup de status
+        run: node .github/scripts/status-rollup_org.mjs
+        env:
+          # App (se configurado); senão cai para o PAT (Opção B)
+          PROJECT_TOKEN: ${{ steps.app.outputs.token || secrets.PROJECT_TOKEN }}
+          # Login da org (ou do usuário) dono do Project
+          PROJECT_OWNER: ${{ github.repository_owner }}
+          # Número do Project (está na URL: /orgs/<org>/projects/<N>)
+          PROJECT_NUMBER: '1'
+          # Nomes EXATOS das opções do campo Status
+          STATUS_TODO: 'Todo'
+          STATUS_IN_PROGRESS: 'In progress'
+          STATUS_DONE: 'Done'
+          # Opcional: filhos nesse status são ignorados no cálculo (ex.: 'Canceled')
+          STATUS_IGNORE: ''
+          DRY_RUN: ${{ inputs.dry_run }}
