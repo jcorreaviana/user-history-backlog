@@ -28,7 +28,7 @@ jobs:
         env:
           PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           PROJECT_OWNER: ${{ github.repository_owner }}
-          PROJECT_NUMBER: '1'            # número do seu Project (está na URL)
+          PROJECT_NUMBER: '7'            # número do seu Project (está na URL)
           STATUS_TODO: 'Todo'
           STATUS_IN_PROGRESS: 'In Progress'
           STATUS_DONE: 'Done'
