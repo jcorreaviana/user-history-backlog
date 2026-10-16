@@ -97,9 +97,9 @@ Legenda: ✅ validado no GitHub · ⏳ implementado, ainda não validado · — 
 | # | Caso | Comportamento esperado | Impl. A | Impl. B | Valid. A | Valid. B |
 |---|---|---|:-:|:-:|:-:|:-:|
 | 1 | Nada a mudar (dry-run) | `0 alteração(ões)`; valida token, owner, número e nomes de Status | ✅ | ✅ | ✅ | ⏳ |
-| 2 | Filha vai para *In progress* | Mãe: *Todo* → *In progress* | ✅ | ✅ | ✅ | ⏳ |
-| 3 | Todas as filhas fechadas e em *Done* | Mãe: *In progress* → *Done* (fecha pelo auto-close) | ✅ | ✅ | ✅ | ⏳ |
-| 4 | Mãe *Done*, filha volta para *In progress* | Mãe: *Done* → *In progress* e issue da mãe reaberta | ✅ | ✅ | ✅ | ⏳ |
+| 2 | Filha vai para *In progress* | Pai: *Todo* → *In progress* | ✅ | ✅ | ✅ | ⏳ |
+| 3 | Todas as filhas fechadas e em *Done* | Pai: *In progress* → *Done* (fecha pelo auto-close) | ✅ | ✅ | ✅ | ⏳ |
+| 4 | Pai *Done*, filha volta para *In progress* | Pai: *Done* → *In progress* e issue do pai reaberta | ✅ | ✅ | ✅ | ⏳ |
 | 5 | Três níveis (Epic > Feature > Task) | Rollup sobe os três níveis numa só execução | ✅ | ✅ | ✅ | ⏳ |
 | 6 | Task *Done* (fechada) volta para *Todo* / *In progress* | Issue reaberta | ✅ | ✅ | ✅ | ⏳ |
 | 7 | Nova task em Feature *Done* | Feature sai de *Done*, issue reaberta, Epic acompanha | ✅ | ✅ | ✅ | ⏳ |
@@ -178,17 +178,17 @@ O **dry-run** executa tudo, exceto a escrita: apenas imprime no log o que mudari
 
 ### 3.5 Roteiro de teste
 
-Cenário: uma issue mãe com duas sub-issues, todas no Project em *Todo*.
+Cenário: uma issue pai com duas sub-issues, todas no Project em *Todo*.
 
 | Ação | Resultado esperado |
 |---|---|
 | Rodar com `dry_run` | `Concluído: 0 alteração(ões).` |
-| Subtask 1 → *In progress* | Mãe: `Todo -> In progress` |
-| Subtasks 1 e 2 → *Done* | Mãe: `In progress -> Done` |
-| Mãe em *Done*, subtask volta para *In progress* | Mãe: `Done -> In progress` (reabertura) |
+| Subtask 1 → *In progress* | Pai: `Todo -> In progress` |
+| Subtasks 1 e 2 → *Done* | Pai: `In progress -> Done` |
+| Pai em *Done*, subtask volta para *In progress* | Pai: `Done -> In progress` (reabertura) |
 | Epic com a Feature como sub-issue | Epic acompanha a Feature na mesma execução (3 níveis) |
 | Task *Done* (issue fechada) volta para *In progress* | Task: issue reaberta (`reabrir issue (CLOSED -> OPEN)`) |
-| Mãe *Done* (fechada) e subtask volta para *In progress* | Mãe: `Done -> In progress` e issue da mãe reaberta |
+| Pai *Done* (fechada) e subtask volta para *In progress* | Pai: `Done -> In progress` e issue do pai reaberta |
 | Nova task adicionada a uma Feature *Done* | Feature sai de *Done* e a issue é reaberta; o Epic acompanha |
 | Fechar uma issue manualmente | Não é reaberta (carência) e o "Item closed" marca *Done* |
 | Issue fechada com status *Blocked* ou `STATUS_IGNORE` | Não é reaberta |
@@ -203,8 +203,8 @@ Cenário: uma issue mãe com duas sub-issues, todas no Project em *Todo*.
 ### 3.6 Resultados da validação
 
 - Dry-run inicial: job verde, `0 alteração(ões)`, o que validou token, owner, número do Project e nomes de Status.
-- Subtask em *In progress*: log `Todo -> In progress (dry-run)` para a mãe.
-- Cron em modo real: ao mover as subtasks, a mãe foi atualizada automaticamente sem intervenção.
+- Subtask em *In progress*: log `Todo -> In progress (dry-run)` para o pai.
+- Cron em modo real: ao mover as subtasks, o pai foi atualizado automaticamente sem intervenção.
 - Reabertura: log `Done -> In progress (dry-run)` e comportamento confirmado.
 - Três níveis (Epic > Feature > Task): funcionou, com o rollup subindo numa única execução.
 - Reabertura de issues fechadas (v3): testada no GitHub no cenário A e funcionou conforme esperado.
