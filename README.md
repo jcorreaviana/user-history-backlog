@@ -46,6 +46,14 @@ Detalhes:
 - Filhos que não estão no Project são ignorados.
 - Itens sem Status são tratados como *Todo*.
 
+**Reabertura de issues:** depois do cálculo, toda issue **fechada** cujo status final seja *Todo* ou *In progress* (folha movida manualmente ou pai que saiu de *Done*) é reaberta. Detalhes:
+
+- Vale também para issues fechadas como "not planned".
+- Só reabre se a issue foi fechada há mais de `REOPEN_GRACE_MINUTES` (padrão 2). Isso evita reabrir uma issue recém-fechada antes de o workflow nativo "Item closed" marcá-la como *Done*.
+- Status fora do trio (*Blocked*, `STATUS_IGNORE`) nunca reabre.
+- Pode ser desligado com `REOPEN_CLOSED: 'false'`.
+- Respeita o `dry_run`.
+
 ### 1.3 Por que cron e não evento em tempo real
 
 Segundo a lista oficial de eventos do GitHub Actions, mudanças de campo em Projects v2 **não disparam workflows** (o evento `projects_v2_item` existe como webhook, mas não como gatilho de workflow). Por isso a reconciliação por cron é o gatilho principal, com atraso de até ~5 minutos. O GitHub pode atrasar execuções agendadas em horários de pico. Veja [Tempo real (opcional)](#7-tempo-real-opcional).
@@ -56,6 +64,7 @@ Segundo a lista oficial de eventos do GitHub Actions, mudanças de campo em Proj
 - Issues ligadas por **sub-issues** nativas (Epic → Feature → Task) e adicionadas ao Project.
 - Os arquivos na **branch padrão** do repositório (workflows agendados só rodam nela).
 - Os nomes das opções de Status conhecidos **exatamente** (maiúsculas, espaços e acentos contam).
+- Workflows nativos do Project (⋯ → Workflows): mantenha **Item closed** (→ Done), **Auto-close issue** (Done → fecha) e **Item added to project** ativos, e **Item reopened desativado**. Se ele estiver ativo, ao reabrir uma issue o Project sobrescreve o status com um valor fixo, o que pode desfazer o status escolhido numa folha.
 
 ### 1.5 Estrutura de arquivos
 
@@ -116,6 +125,8 @@ STATUS_TODO: 'Todo'
 STATUS_IN_PROGRESS: 'In progress'               # atenção ao "p" minúsculo
 STATUS_DONE: 'Done'
 STATUS_IGNORE: ''                               # ex.: 'Canceled'
+REOPEN_CLOSED: 'true'                           # reabre issues fechadas que voltaram para Todo / In progress
+REOPEN_GRACE_MINUTES: '2'                       # só reabre se fechada há mais que isso
 ```
 
 - Se o Project é seu mas o repositório está em outra conta, defina `PROJECT_OWNER` com o seu usuário.
@@ -141,6 +152,11 @@ Cenário: uma issue mãe com duas sub-issues, todas no Project em *Todo*.
 | Subtasks 1 e 2 → *Done* | Mãe: `In progress -> Done` |
 | Mãe em *Done*, subtask volta para *In progress* | Mãe: `Done -> In progress` (reabertura) |
 | Epic com a Feature como sub-issue | Epic acompanha a Feature na mesma execução (3 níveis) |
+| Task *Done* (issue fechada) volta para *In progress* | Task: issue reaberta (`reabrir issue (CLOSED -> OPEN)`) |
+| Mãe *Done* (fechada) e subtask volta para *In progress* | Mãe: `Done -> In progress` e issue da mãe reaberta |
+| Nova task adicionada a uma Feature *Done* | Feature sai de *Done* e a issue é reaberta; o Epic acompanha |
+| Fechar uma issue manualmente | Não é reaberta (carência) e o "Item closed" marca *Done* |
+| Issue fechada com status *Blocked* ou `STATUS_IGNORE` | Não é reaberta |
 
 ### 3.6 Resultados da validação
 
@@ -197,7 +213,7 @@ Vantagens: não depende de uma pessoa, permissões mínimas, alterações aparec
    - **Webhook**: desmarque **Active**.
 3. **Permissions**:
    - **Organization permissions → Projects**: `Read and write`
-   - **Repository permissions → Issues**: `Read-only`
+   - **Repository permissions → Issues**: `Read and write` (necessário para reabrir issues)
    - (Metadata: Read-only é adicionado automaticamente.)
 4. **Where can this GitHub App be installed?**: `Only on this account`.
 5. **Create GitHub App**.
@@ -226,7 +242,7 @@ O passo `actions/create-github-app-token@v2` do workflow só roda se `APP_ID` es
 #### Opção 2: PAT
 
 - **Classic**: escopos `project` e `repo`. Se a organização usa SSO, autorize o token em **Configure SSO**.
-- **Fine-grained** (pelo que sei, suportado para Projects de organização): *Resource owner* = a organização; permissão de organização **Projects: Read and write** e de repositório **Issues: Read-only**. A organização pode exigir aprovação.
+- **Fine-grained** (pelo que sei, suportado para Projects de organização): *Resource owner* = a organização; permissão de organização **Projects: Read and write** e de repositório **Issues: Read and write**. A organização pode exigir aprovação.
 
 Salve como secret `PROJECT_TOKEN`. Sem `APP_ID`, o workflow usa esse secret.
 
@@ -241,6 +257,8 @@ STATUS_TODO: 'Todo'
 STATUS_IN_PROGRESS: 'In progress'
 STATUS_DONE: 'Done'
 STATUS_IGNORE: ''
+REOPEN_CLOSED: 'true'
+REOPEN_GRACE_MINUTES: '2'
 ```
 
 Se o workflow estiver num repositório **fora** da organização dona do Project, escreva o login da organização em `PROJECT_OWNER`.
@@ -274,6 +292,8 @@ Concluído: 1 alteração(ões).
 | Passo `Gerar token do GitHub App` falha | (Org) `APP_ID`/`APP_PRIVATE_KEY` incorretos ou App não instalado. Verifique se o `.pem` foi colado completo. |
 | Botão **Run workflow** não aparece | Arquivo fora da branch padrão ou de `.github/workflows/`, ou sem `workflow_dispatch`. Verifique também se o Actions está habilitado. |
 | Cron não roda | O GitHub atrasa execuções agendadas em horários de pico. Em repositórios públicos, workflows agendados são desativados após 60 dias sem atividade: reative em **Actions**. |
+| Issue continua fechada com status *In progress* / *Todo* | Ainda dentro da carência (`REOPEN_GRACE_MINUTES`), `REOPEN_CLOSED: 'false'`, ou token sem permissão de escrita em Issues. |
+| Status de um item volta para *Todo* ao reabrir | O workflow nativo **Item reopened** está ativo. Desative-o em ⋯ → Workflows. |
 | Pai em *Blocked* não muda | Intencional: status fora do trio *Todo/In progress/Done* não é sobrescrito. |
 | Push de `.github/workflows/` recusado | Se subir por token, ele precisa de permissão de workflow (`workflow` no PAT). Pelo git local com sua conta normal não há problema. |
 
@@ -301,3 +321,4 @@ Para eliminar o atraso do cron em uma **organização**, é possível criar um w
 |---|---|
 | v1 (cenário A) | Projeto pessoal com cron + PAT. Implementado e validado, incluindo 3 níveis e reabertura. |
 | v2 (cenário B) | Versão para organização (`_org`): `repositoryOwner`, GitHub App, logs legíveis e validação de `STATUS_IGNORE`. Artefato, não validado em org. |
+| v3 (A e B) | Reabertura de issues fechadas que voltam para *Todo* / *In progress* (`REOPEN_CLOSED`, `REOPEN_GRACE_MINUTES`). Cenário B exige Issues: Read and write no App/PAT. Ainda não validado. |

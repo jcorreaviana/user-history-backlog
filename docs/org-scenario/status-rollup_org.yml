@@ -55,4 +55,7 @@ jobs:
           STATUS_DONE: 'Done'
           # Opcional: filhos nesse status são ignorados no cálculo (ex.: 'Canceled')
           STATUS_IGNORE: ''
+          # Reabre issues fechadas que voltaram para Todo / In progress (carência em minutos)
+          REOPEN_CLOSED: 'true'
+          REOPEN_GRACE_MINUTES: '2'
           DRY_RUN: ${{ inputs.dry_run }}

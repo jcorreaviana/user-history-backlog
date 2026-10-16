@@ -11,6 +11,8 @@ const S = {
   done: env.STATUS_DONE || 'Done',
   ignore: env.STATUS_IGNORE || '',
 };
+const REOPEN = env.REOPEN_CLOSED !== 'false';
+const GRACE_MS = Number(env.REOPEN_GRACE_MINUTES ?? 2) * 60_000; // evita corrida com o "Item closed" nativo
 if (!TOKEN || !OWNER || !NUMBER) {
   throw new Error('Faltam PROJECT_TOKEN / PROJECT_OWNER / PROJECT_NUMBER');
 }
@@ -49,6 +51,8 @@ query($login:String!, $number:Int!, $cursor:String) {
             content {
               ... on Issue {
                 id
+                state
+                closedAt
                 number
                 title
                 repository { nameWithOwner }
@@ -89,6 +93,11 @@ mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
   }) { projectV2Item { id } }
 }`;
 
+const REOPEN_MUTATION = `
+mutation($issue:ID!) {
+  reopenIssue(input:{ issueId:$issue }) { issue { id } }
+}`;
+
 async function main() {
   const { project, items } = await loadProject();
   const optionId = Object.fromEntries(project.field.options.map(o => [o.name, o.id]));
@@ -111,6 +120,8 @@ async function main() {
       label: `${c.repository?.nameWithOwner ?? '?'}#${c.number} ${c.title}`,
       itemId: it.id,
       status: it.status?.name ?? S.todo,
+      closed: c.state === 'CLOSED',
+      closedAt: c.closedAt ? Date.parse(c.closedAt) : 0,
       children: (c.subIssues?.nodes ?? []).map(k => k.id),
     });
   }
@@ -156,7 +167,20 @@ async function main() {
   }
 
   for (const id of nodes.keys()) await resolve(id);
-  console.log(`Concluído: ${changes} alteração(ões).`);
+
+  // Reabre issues fechadas cujo status final voltou para Todo / In progress.
+  // A carência evita reabrir uma issue recém-fechada antes de o "Item closed" nativo marcar Done.
+  let reopened = 0;
+  if (REOPEN) {
+    for (const [id, n] of nodes) {
+      if (!n.closed || ![S.todo, S.prog].includes(n.status)) continue;
+      if (Date.now() - n.closedAt < GRACE_MS) continue;
+      console.log(`${n.label}: reabrir issue (CLOSED -> OPEN), status ${n.status}${DRY ? ' (dry-run)' : ''}`);
+      if (!DRY) await gql(REOPEN_MUTATION, { issue: id });
+      reopened++;
+    }
+  }
+  console.log(`Concluído: ${changes} alteração(ões), ${reopened} reabertura(s).`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
