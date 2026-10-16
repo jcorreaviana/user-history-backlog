@@ -178,6 +178,7 @@ Cenário: uma issue mãe com duas sub-issues, todas no Project em *Todo*.
 - Reabertura: log `Done -> In progress (dry-run)` e comportamento confirmado.
 - Três níveis (Epic > Feature > Task): funcionou, com o rollup subindo numa única execução.
 - Reabertura de issues fechadas (v3): testada no GitHub no cenário A e funcionou conforme esperado.
+- Status do pai só pelas folhas (v4): testado no GitHub no cenário A e funcionou conforme esperado.
 
 **Ajuste que foi necessário:** o nome da opção no board era `In progress` (p minúsculo) e o YAML estava com `In Progress`. Só o YAML precisou mudar, pois os nomes vêm de variáveis de ambiente.
 
@@ -335,4 +336,4 @@ Para eliminar o atraso do cron em uma **organização**, é possível criar um w
 | v1 (cenário A) | Projeto pessoal com cron + PAT. Implementado e validado, incluindo 3 níveis e reabertura. |
 | v2 (cenário B) | Versão para organização (`_org`): `repositoryOwner`, GitHub App, logs legíveis e validação de `STATUS_IGNORE`. Artefato, não validado em org. |
 | v3 (A e B) | Reabertura de issues fechadas que voltam para *Todo* / *In progress* (`REOPEN_CLOSED`, `REOPEN_GRACE_MINUTES`). Cenário A validado no GitHub; cenário B exige Issues: Read and write no App/PAT e continua sem validação em org. |
-| v4 (A e B) | Status do pai só pelas folhas: removida a regra que mantinha o pai em *In progress* com todas as filhas em *Todo*; folha em *Done* com issue aberta não conta como concluída. Ainda não validado. |
+| v4 (A e B) | Status do pai só pelas folhas: removida a regra que mantinha o pai em *In progress* com todas as filhas em *Todo*; folha em *Done* com issue aberta não conta como concluída. Cenário A validado no GitHub; cenário B sem validação em org. |
