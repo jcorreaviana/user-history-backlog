@@ -88,6 +88,36 @@ seu-repo/
 
 > **Importante:** não deixe os dois workflows ativos apontando para o **mesmo** Project: ambos rodariam no cron e fariam as mesmas escritas. Use o cenário A **ou** o B por Project. Se for adotar só um, remova o outro par de arquivos.
 
+### 1.6 Matriz de casos cobertos
+
+A lógica é a mesma nos dois cenários, então todos os casos estão **implementados** em A e B. A validação em ambiente real só foi feita no cenário A. O roteiro para reproduzir está na seção 3.5.
+
+Legenda: ✅ validado no GitHub · ⏳ implementado, ainda não validado · — sem teste dedicado.
+
+| # | Caso | Comportamento esperado | Impl. A | Impl. B | Valid. A | Valid. B |
+|---|---|---|:-:|:-:|:-:|:-:|
+| 1 | Nada a mudar (dry-run) | `0 alteração(ões)`; valida token, owner, número e nomes de Status | ✅ | ✅ | ✅ | ⏳ |
+| 2 | Filha vai para *In progress* | Mãe: *Todo* → *In progress* | ✅ | ✅ | ✅ | ⏳ |
+| 3 | Todas as filhas fechadas e em *Done* | Mãe: *In progress* → *Done* (fecha pelo auto-close) | ✅ | ✅ | ✅ | ⏳ |
+| 4 | Mãe *Done*, filha volta para *In progress* | Mãe: *Done* → *In progress* e issue da mãe reaberta | ✅ | ✅ | ✅ | ⏳ |
+| 5 | Três níveis (Epic > Feature > Task) | Rollup sobe os três níveis numa só execução | ✅ | ✅ | ✅ | ⏳ |
+| 6 | Task *Done* (fechada) volta para *Todo* / *In progress* | Issue reaberta | ✅ | ✅ | ✅ | ⏳ |
+| 7 | Nova task em Feature *Done* | Feature sai de *Done*, issue reaberta, Epic acompanha | ✅ | ✅ | ✅ | ⏳ |
+| 8 | Fechar uma issue manualmente | Não é reaberta (carência); "Item closed" marca *Done* | ✅ | ✅ | ✅ | ⏳ |
+| 9 | Issue fechada em *Blocked* ou `STATUS_IGNORE` | Não é reaberta | ✅ | ✅ | ✅ | ⏳ |
+| 10 | Pai em *In progress* (na mão), todas as filhas em *Todo* | Pai volta para *Todo* | ✅ | ✅ | ✅ | ⏳ |
+| 11 | Filhas de *In progress* para *Todo*, uma a uma | Pai fica em *In progress* até a última voltar; depois *Todo* | ✅ | ✅ | ✅ | ⏳ |
+| 12 | Uma filha em *In progress*, outras em *Todo* | Pai em *In progress* | ✅ | ✅ | ✅ | ⏳ |
+| 13 | Filha em *Done* mas issue aberta, outras em *Done* | Pai em *In progress* (o script não fecha a filha) | ✅ | ✅ | ✅ | ⏳ |
+| 14 | Pai movido para *Done* na mão com filhas abertas | Revertido para *In progress*; issue reaberta | ✅ | ✅ | ✅ | ⏳ |
+| 15 | Pai em *Blocked* | Não é alterado | ✅ | ✅ | ✅ | ⏳ |
+| 16 | Filho em `STATUS_IGNORE` (ex.: *Canceled*) | Ignorado no cálculo | ✅ | ✅ | — | — |
+| 17 | Filho fora do Project | Ignorado no cálculo; pai sem filhos no Project é tratado como folha | ✅ | ✅ | — | — |
+| 18 | Item sem Status | Tratado como *Todo* | ✅ | ✅ | — | — |
+| 19 | Opção de Status inexistente / Project não encontrado | Falha com mensagem listando as opções (B: mensagens mais específicas e valida `STATUS_IGNORE`) | ✅ | ✅ | ✅ | ⏳ |
+
+> Os casos 1 a 5 estão registrados na seção 3.6. Os casos 6 a 15 correspondem às versões v3 e v4 do histórico, confirmadas como funcionando no cenário A.
+
 ---
 
 ## 2. Comparação rápida
