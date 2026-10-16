@@ -127,8 +127,7 @@ async function main() {
                       : ks.every(s => s === S.todo) ? S.todo
                       : S.prog;
         const managed = [S.todo, S.prog, S.done].includes(n.status); // não mexe em Blocked etc.
-        const skipRegress = derived === S.todo && n.status !== S.done; // só volta pra Todo se estava Done
-        if (managed && derived !== n.status && !skipRegress) {
+        if (managed && derived !== n.status) {
           console.log(`${id}: ${n.status} -> ${derived}${DRY ? ' (dry-run)' : ''}`);
           if (!DRY) {
             await gql(MUTATION, {
@@ -142,8 +141,10 @@ async function main() {
       }
     }
     visiting.delete(id);
-    memo.set(id, n.status);
-    return n.status;
+    // Folha em Done só conta como concluída se a issue estiver fechada (pai derivado Done será fechado pelo auto-close)
+    const eff = !kids.length && n.status === S.done && !n.closed ? S.prog : n.status;
+    memo.set(id, eff);
+    return eff;
   }
 
   for (const id of nodes.keys()) await resolve(id);

@@ -35,11 +35,16 @@ Uma Feature sem tasks é folha (você controla o status). Ao adicionar a primeir
 
 | Status dos filhos | Status do pai |
 |---|---|
-| Todos *Done* | *Done* |
-| Todos *Todo* | *Todo* (só volta para Todo se o pai estava em *Done*) |
+| Todos *Done* (e fechados) | *Done* |
+| Todos *Todo* | *Todo* |
 | Qualquer outra combinação (algum *In progress*, ou mistura) | *In progress* |
 
+O status do pai depende só do estado **atual** dos filhos, sem histórico: se um filho continua em *In progress*, o pai se mantém em *In progress*, e só volta para *Todo* quando o último filho voltar.
+
 Detalhes:
+
+- Uma **folha** só conta como concluída se estiver em *Done* **e** com a issue fechada. Folha em *Done* mas aberta mantém o pai em *In progress* (o script não fecha a folha). Um filho que também é pai e foi calculado como *Done* conta como concluído na mesma execução, pois o auto-close o fechará.
+- O status de um pai com filhos no Project não deve ser alterado manualmente: a edição é desfeita na próxima execução (em até ~5 minutos). O Project não permite bloquear o campo, então a consistência é garantida por reconciliação.
 
 - Pais com status fora do trio configurado (ex.: *Blocked*) **não são alterados**.
 - Filhos no status de `STATUS_IGNORE` (ex.: *Canceled*) são ignorados no cálculo.
@@ -157,6 +162,13 @@ Cenário: uma issue mãe com duas sub-issues, todas no Project em *Todo*.
 | Nova task adicionada a uma Feature *Done* | Feature sai de *Done* e a issue é reaberta; o Epic acompanha |
 | Fechar uma issue manualmente | Não é reaberta (carência) e o "Item closed" marca *Done* |
 | Issue fechada com status *Blocked* ou `STATUS_IGNORE` | Não é reaberta |
+| Pai em *In progress* (na mão), todas as filhas em *Todo* | Pai volta para *Todo* |
+| Todas as filhas de *In progress* para *Todo*, uma de cada vez | Pai fica em *In progress* até a última voltar; depois *Todo* |
+| Uma filha em *In progress*, as outras em *Todo* | Pai em *In progress* |
+| Filha em *Done* mas issue aberta, outras em *Done* | Pai em *In progress* |
+| Todas as filhas fechadas e em *Done* | Pai *Done* (fecha pelo auto-close) |
+| Pai movido para *Done* na mão com filhas abertas | Revertido para *In progress*; issue reaberta |
+| Pai em *Blocked* | Não é alterado |
 
 ### 3.6 Resultados da validação
 
@@ -323,3 +335,4 @@ Para eliminar o atraso do cron em uma **organização**, é possível criar um w
 | v1 (cenário A) | Projeto pessoal com cron + PAT. Implementado e validado, incluindo 3 níveis e reabertura. |
 | v2 (cenário B) | Versão para organização (`_org`): `repositoryOwner`, GitHub App, logs legíveis e validação de `STATUS_IGNORE`. Artefato, não validado em org. |
 | v3 (A e B) | Reabertura de issues fechadas que voltam para *Todo* / *In progress* (`REOPEN_CLOSED`, `REOPEN_GRACE_MINUTES`). Cenário A validado no GitHub; cenário B exige Issues: Read and write no App/PAT e continua sem validação em org. |
+| v4 (A e B) | Status do pai só pelas folhas: removida a regra que mantinha o pai em *In progress* com todas as filhas em *Todo*; folha em *Done* com issue aberta não conta como concluída. Ainda não validado. |
